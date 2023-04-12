@@ -5,7 +5,7 @@ const getAllProductsStatics = (req, res) => {
 }
 
 const getAllProducts = async (req, res) => {
-    const { featured, company, name, sort, fields } = req.query
+    const { featured, company, name, sort, fields, numericFilters } = req.query
     const queryObject = {}
 
     if (featured) {
@@ -31,6 +31,28 @@ const getAllProducts = async (req, res) => {
     if (fields) {
         fieldsList = fields.split(",").join(" ")
         result = result.select(fieldsList)
+    }
+
+    if (numericFilters) {
+        const operatorMap = {
+            ">": "$gt",
+            ">=": "$gte",
+            "=": "$eq",
+            "<": "$lt",
+            "<=": "$lte",
+        }
+
+        const regEx = /\b(<|>|>=|=|<|<=)\b/g
+        let filters = numericFilters.replace(regEx,
+            (match) => `-${operatorMap[match]}-`)
+
+        const options = ['price', 'rating']
+        filters = filters.split(",").forEach((item) => {
+            const [fields, operator, value] = item.split("-")
+            if (options.includes(fields)) {
+                queryObject[fields] = { [operator]: Number(value) }
+            }
+        });
     }
 
     let result = Product.find(queryObject)
